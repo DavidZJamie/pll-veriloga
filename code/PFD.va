@@ -1,0 +1,50 @@
+// VerilogA for PLL, PFDv2_va, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module PFDv2_va(ref, fb, up, down);
+
+input ref;  voltage ref;
+input fb;   voltage fb;
+output up, down; electrical up, down; 
+
+parameter real vh = 0.9;
+parameter real vl = 0.0;
+parameter real vth = 0.45;
+parameter integer dir = 1 from [-1:1] exclude 0;// 1 for positive edge trigger
+parameter real tr = 1p from (0:inf);  // transition time of output signal
+parameter real td=0 from [0:inf);   // average delay from input to output
+parameter real jitter = 1f from [0:1); // white jitter
+
+integer up_state, down_state, seed;
+real dt, delay_time;
+
+analog begin
+    @(initial_step) begin
+        seed = 520;
+        up_state = 0;
+        down_state = 0;
+    end
+
+    @(cross(V(ref) - vth, dir)) begin
+        delay_time = jitter * $rdist_normal(seed, 0, 1);
+        dt = (delay_time > 0) ? delay_time : 0;
+        up_state = 1;
+    end
+
+    @(cross(V(fb) - vth, dir)) begin
+        delay_time = jitter * $rdist_normal(seed, 0, 1);
+        dt = (delay_time > 0) ? delay_time : 0;
+        down_state = 1;
+    end
+
+    if (up_state == 1 && down_state == 1) begin
+            up_state = 0;
+            down_state = 0;
+    end
+
+    V(up)   <+ transition(up_state ? vh : vl, td + dt, tr);
+    V(down) <+ transition(down_state ? vh : vl, td + dt, tr);
+end
+endmodule

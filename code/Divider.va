@@ -1,0 +1,35 @@
+// VerilogA for test, FDIV_va, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module FDIV_va(vin,vout);
+	output vout;
+	voltage vout;
+	input vin;
+	voltage vin;
+	parameter real vh=+1;
+	parameter real vl=-1;
+	parameter real vth=0;	
+	parameter integer ratio=2 from [1:inf);
+	parameter integer dir=1 from [-1:1];
+	parameter real td=0;
+	parameter real tr=1n;
+	integer count, n;
+
+	analog begin
+		 @(initial_step) begin
+            count = 0;
+            n = 0;
+        end
+
+		@(cross(V(vin) - vth, dir)) begin
+        count = count + 1;
+        if (count >= ratio)
+            count = 0;
+        n = (2*count >= ratio);
+    	end
+		V(vout)<+transition(n? vh:vl,td,tr);
+
+end
+endmodule

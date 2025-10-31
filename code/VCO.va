@@ -1,0 +1,53 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module VCOv2_va(vin,vout);
+	input vin; voltage vin;
+	output vout; voltage vout;
+	
+	real phase;
+	real phase_ideal;
+	real fout;
+	real f_ideal;
+	real dT;
+
+	integer seed;
+	parameter real jitter = 10p;//from [0:0.25/fmax)
+	parameter real fc = 2G;
+	parameter real gain = 200M;
+	parameter real vh = 1;
+	parameter real vl = 0;
+	parameter real ttol = 0.5p;
+	parameter real vtol = 1f;//from (0:0.1/fmax)
+	parameter real tr = 1p;
+	parameter real td = 1p;
+	real vo;
+
+	analog begin
+		@(initial_step) 	begin
+			seed = 100;
+		end
+		
+		f_ideal = fc + gain*V(vin);
+		if (fout == 0) fout = f_ideal;
+				
+		phase = 2*`M_PI*idtmod (fout,0,1,0)-`M_PI;
+		phase_ideal = 2*`M_PI*idtmod (f_ideal,0,1,0)-`M_PI;
+
+		@(cross(phase_ideal + `M_PI/2, +1, ttol, vtol) or cross(phase_ideal - `M_PI/2, +1, ttol, vtol))
+		 begin
+			dT = 1.414 * jitter * $rdist_normal(seed, 0, 1);
+			fout = f_ideal * (1 + dT * f_ideal);
+		end
+
+		phase = 2*`M_PI*idtmod(fout, 0, 1, -0.5);
+		@(cross(phase - `M_PI/2, +1, ttol, vtol) or cross(phase + `M_PI/2, +1, ttol, vtol)) 
+		begin
+			vo = ((phase >= -`M_PI/2) && (phase <= `M_PI/2)) ? vh : vl;
+		end
+
+		V(vout) <+ transition(vo, td, tr);
+	
+	end
+
+endmodule

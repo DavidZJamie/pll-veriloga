@@ -1,0 +1,43 @@
+// VerilogA for test, CP_va, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module CP_va(out, up, down);
+    output out;
+    electrical out;
+    input  up, down;
+    voltage  up, down;
+
+    parameter real vh= +1;
+    parameter real vl= 0;
+    parameter real vth= 0.5;
+    parameter real iout = 100u;
+    parameter real rclamp = 100;
+    parameter real tr = 1n;
+    parameter real td = 0;
+	
+	real state;
+
+    analog begin
+        if (V(up) > vth && V(down) > vth) begin
+            state = 0;
+        end else if (V(up) > vth) begin
+            state = -1;
+        end else if (V(down) > vth) begin
+            state = 1; 
+        end else begin
+            state = 0;
+        end
+
+        I(out) <+ transition(iout*state, td, tr);
+    
+        if (V(out) > vh)
+            I(out) <+ (V(out) - vh) / rclamp;
+        else if (V(out) < vl)
+            I(out) <+ (V(out) - vl) / rclamp;
+    // High impedance 
+        I(out) <+ V(out)/(1e12);
+    end
+
+endmodule
